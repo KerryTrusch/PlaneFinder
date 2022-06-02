@@ -100,8 +100,6 @@ function setNewRadius(val) {
 // Then removes the current layer and creates and adds a new layer with the updated API data
 async function updateLayer(data) {
     const planes = await getData(data);
-    console.log(typeof planes);
-    console.log(planes);
     firsttime = false;
 
     if (planes) {
@@ -196,7 +194,8 @@ function Home() {
         layerGroup.addTo(mymap);
         tiles.addTo(mymap);
         layerGroup.addLayer(myGeoJsonLayer);
-        setInterval(updateLayer({'lat': coordinate.lat, 'lng': coordinate.lng, 'offset': kmToCoordinate(sliderVal)}), 3000);
+        let layerdata = {'lat': coordinate.lat, 'lng': coordinate.lng, 'offset': (sliderVal / 111)};
+        setInterval(updateLayer(layerdata), 3000);
 
     }, [])
     return (
