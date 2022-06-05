@@ -78,7 +78,7 @@ let clickedMarker = "";
 let savedMarker = "";
 let savedFeature = null;
 let clickedFeature = null;
-
+let layerdata = null;
 // Use variable to keep track of the first await of the OpenSky api call. 
 // Once the call is finished, set to false so loading screen does not appear again
 let firsttime = true;
@@ -101,7 +101,7 @@ function setNewRadius(val) {
 async function updateLayer(data) {
     const planes = await getData(data);
     firsttime = false;
-
+    console.log('called')
     if (planes) {
 
         // geoData will be the collection of 'features' (the individual plane data) that is eventually pushed onto the geoLayer
@@ -162,7 +162,12 @@ async function updateLayer(data) {
 // Fetch request from opensky for data
 async function getData(data) {
     let URL = "https://opensky-network.org/api/states/all?lamin=" + (data.lat - data.offset) + "&lomin=" + (data.lng - data.offset) + "&lamax=" + (data.lat + data.offset) + "&lomax=" + (data.lng + data.offset);
-    const response = await fetch(URL);
+    const response = await fetch(URL, {
+        mode: 'cors',
+        headers: {
+          'Access-Control-Allow-Origin':'*'
+        }
+      });
     const newdata = await response.json();
     return newdata.states;
 }
@@ -173,8 +178,9 @@ function kmToCoordinate(value) {
 }
 
 function Home() {
-    const [sliderVal, setSliderVal] = useState(0);
-    const [coordinate, setCoordinate] = useState({lat: 40, lng: -100})
+    const [sliderVal, setSliderVal] = useState(200);
+    const [coordinate, setCoordinate] = useState({ lat: 40, lng: -100 })
+
     //text underneath slider telling current range
     const [output, setOutput] = useState(sliderVal + " KM")
     useEffect(() => {
@@ -182,28 +188,41 @@ function Home() {
         if (!mymap) {
             mymap = L.map('mapid', { tap: L.Browser.safari && L.Browser.mobile, renderer: L.canvas() }).setView([30, -80], 4);
         }
-        moveableMarker = L.marker([40, -100], { draggable: true }, { autoPan: true }).addTo(mymap);
-        radiusRing = L.circle([40, -100], { radius: 250 * 1000 }).addTo(mymap); 
+        if (!mymap.hasLayer(moveableMarker)) {
+            moveableMarker = L.marker([40, -100], { draggable: true }, { autoPan: true }).addTo(mymap);
+        }
+        if (!mymap.hasLayer(radiusRing)) {
+            radiusRing = L.circle([40, -100], { radius: 250 * 1000 }).addTo(mymap);
+        }
         moveableMarker.on('movestart', function () {
-            mymap.removeLayer(radiusRing);
+            while (mymap.hasLayer(radiusRing)) {
+                mymap.removeLayer(radiusRing);
+            }
         });
         moveableMarker.on('moveend', function () {
-            let rad = radiusRing.getRadius();
-            radiusRing = L.circle([coordinate.lat, coordinate.lng], { radius: rad }).addTo(mymap);
+            setCoordinate(moveableMarker.getLatLng())
         });
         layerGroup.addTo(mymap);
         tiles.addTo(mymap);
         layerGroup.addLayer(myGeoJsonLayer);
-        let layerdata = {'lat': coordinate.lat, 'lng': coordinate.lng, 'offset': (sliderVal / 111)};
-        setInterval(updateLayer(layerdata), 3000);
-
+        layerdata = { 'lat': coordinate.lat, 'lng': coordinate.lng, 'offset': (sliderVal / 111) };
+        setInterval(() => setCoordinate((prevState) => ({...prevState})), 5000);
     }, [])
+
+    useEffect(() => {
+        mymap.removeLayer(radiusRing);
+        let rad = radiusRing.getRadius();
+        radiusRing = L.circle([coordinate.lat, coordinate.lng], { radius: rad }).addTo(mymap);
+        layerdata = { 'lat': coordinate.lat, 'lng': coordinate.lng, 'offset': (sliderVal / 111) };
+        updateLayer(layerdata);
+    }, [coordinate])
+
     return (
-        <div className="w-screen h-screen">
-            <div>
+        <div className="w-screen h-screen flex flex-col text-center content-center align-middle">
+            <div className="text-xl pt-5 pb-5">
                 Live map of planes around the world
             </div>
-            <div id="mapid" className="w-3/4 h-3/4"></div>
+            <div id="mapid" className="w-1/2 h-1/2 ml-auto mr-auto"></div>
         </div>
     )
 }
