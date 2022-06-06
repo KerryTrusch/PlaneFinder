@@ -1,162 +1,15 @@
-import { useEffect, useState } from 'react';
+import { createRef, useEffect, useRef, useState } from 'react';
+import L from 'leaflet';
+import { FeatureGroup, MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet';
+import "leaflet-rotatedmarker";
+import DraggableMarker from './DraggableMarker';
+//Customization for plane icon
 
-const L = window.L;
-let mymap = null;
-let moveableMarker = null
-let radiusRing = null
-
-var proto_initIcon = L.Marker.prototype._initIcon;
-var proto_setPos = L.Marker.prototype._setPos;
-var oldIE = (L.DomUtil.TRANSFORM === 'msTransform');
-
-L.Marker.addInitHook(function () {
-    var iconOptions = this.options.icon && this.options.icon.options;
-    var iconAnchor = iconOptions && this.options.icon.options.iconAnchor;
-    if (iconAnchor) {
-        iconAnchor = (iconAnchor[0] + 'px ' + iconAnchor[1] + 'px');
-    }
-    this.options.rotationOrigin = this.options.rotationOrigin || iconAnchor || 'center bottom';
-    this.options.rotationAngle = this.options.rotationAngle || 0;
-
-    // Ensure marker keeps rotated during dragging
-    this.on('drag', function (e) { e.target._applyRotation(); });
-});
-
-L.Marker.include({
-    _initIcon: function () {
-        proto_initIcon.call(this);
-    },
-
-    _setPos: function (pos) {
-        proto_setPos.call(this, pos);
-        this._applyRotation();
-    },
-
-    _applyRotation: function () {
-        if (this.options.rotationAngle) {
-            this._icon.style[L.DomUtil.TRANSFORM + 'Origin'] = this.options.rotationOrigin;
-
-            if (oldIE) {
-                // for IE 9, use the 2D rotation
-                this._icon.style[L.DomUtil.TRANSFORM] = 'rotate(' + this.options.rotationAngle + 'deg)';
-            } else {
-                // for modern browsers, prefer the 3D accelerated version
-                this._icon.style[L.DomUtil.TRANSFORM] += ' rotateZ(' + this.options.rotationAngle + 'deg)';
-            }
-        }
-    },
-
-    setRotationAngle: function (angle) {
-        this.options.rotationAngle = angle;
-        this.update();
-        return this;
-    },
-
-    setRotationOrigin: function (origin) {
-        this.options.rotationOrigin = origin;
-        this.update();
-        return this;
-    }
-});
-
-//Customization for plane and popup on click
-const myIcon = L.icon({
-    iconUrl: "plane.png",
-    iconSize: [24, 32],
-    iconAnchor: [12, 32],
-    popupAnchor: [12, 16]
-});
-let popupCustomOptions =
-{
-    'maxWidth': '400',
-    'width': '200',
-    'className': 'popupCustom'
-}
-
-// Variables for the selected plane. We want a temp selection and a saved selection once button is clicked.
-let clickedMarker = "";
-let savedMarker = "";
-let savedFeature = null;
-let clickedFeature = null;
-let layerdata = null;
-// Use variable to keep track of the first await of the OpenSky api call. 
-// Once the call is finished, set to false so loading screen does not appear again
-let firsttime = true;
-
-// Setting up tiles for leaflet from openstreetmap
-const attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-const tileURL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-const tiles = L.tileLayer(tileURL, { attribution });
-
-// Initialize the first geoLayer. We use a layerGroup to flush the geoLayer when we call the updateLayer method
-let myGeoJsonLayer = new L.geoJSON();
-let layerGroup = new L.LayerGroup();
-
-// set this equal to the slider oninput
-function setNewRadius(val) {
-    radiusRing.setRadius(val * 1000);
-}
-// First changes the raw JSON from the fetch request into geoJSON. geoJSON was the simplest way to add properties to multiple marker objects that need to dynamically update.
-// Then removes the current layer and creates and adds a new layer with the updated API data
-async function updateLayer(data) {
-    const planes = await getData(data);
-    firsttime = false;
-    console.log('called')
-    if (planes) {
-
-        // geoData will be the collection of 'features' (the individual plane data) that is eventually pushed onto the geoLayer
-        let geoData = {};
-        geoData['type'] = "FeatureCollection";
-        let features = [];
-        for (let i = 0; i < planes.length; i++) {
-            let outGeoJson = {};
-            outGeoJson['type'] = 'Feature';
-            outGeoJson['properties'] = {
-                'callsign': planes[i][1],
-                'rotation': planes[i][10],
-                'altitude': planes[i][7],
-                'velocity': planes[i][9]
-            };
-            outGeoJson['geometry'] = {
-                'type': 'Point', 'coordinates':
-                    [planes[i][5], planes[i][6]]
-            };
-            features.push(outGeoJson);
-        }
-        geoData['features'] = features;
-
-        // Flush the current geoLayer
-        layerGroup.removeLayer(myGeoJsonLayer);
-
-        // Create a new layer. For each plane, we add a marker at the coordinates of the plane and bind a popup with the properties pulled from above
-        myGeoJsonLayer = L.geoJSON(geoData, {
-            pointToLayer: function (feature, latlng) {
-                return L.marker(latlng, { icon: myIcon })
-                    .setRotationAngle(feature.properties.rotation - 90)
-                    .setRotationOrigin('center center');
-            },
-            onEachFeature: function (feature, layer) {
-                let popupContent = '<p style="text-align:center;">' + feature.properties.callsign + "<br><br>Altitude: " +
-                    feature.properties.altitude + " Meters<br>Velocity: " + feature.properties.velocity + " kmph</p>";
-                if (savedFeature && savedFeature.properties.callsign === feature.properties.callsign) {
-                    savedFeature = feature;
-                }
-                layer.bindPopup(popupContent, popupCustomOptions)
-                    .on('click', function () {
-                        clickedMarker = popupContent;
-                        clickedFeature = feature;
-                    });
-            }
-        });
-
-        // If there are no planes within the radius, we simply create an empty layer
-    } else {
-        myGeoJsonLayer = new L.geoJSON();
-    }
-    mymap.removeLayer(layerGroup);
-    layerGroup.addTo(mymap);
-    layerGroup.addLayer(myGeoJsonLayer);
-    return true;
+function createIcon(url) {
+    return new L.Icon({
+        iconUrl: url,
+        iconSize: [16, 24],
+    });
 }
 
 // Fetch request from opensky for data
@@ -165,65 +18,62 @@ async function getData(data) {
     const response = await fetch(URL, {
         mode: 'cors',
         headers: {
-          'Access-Control-Allow-Origin':'*'
+            'Access-Control-Allow-Origin': '*'
         }
-      });
+    });
     const newdata = await response.json();
     return newdata.states;
 }
 
-// Change the laditude point to kilometers
-function kmToCoordinate(value) {
-    return value / 111;
+function Plane(props) {
+    return (
+        <Marker position={props.position} icon={createIcon('plane.png')} rotationAngle={props.rotation} rotationOrigin={'center center'}>
+            <Tooltip>
+                <p style={{ textAlign: 'center' }}> {props.callsign} <br /><br />Altitude:
+                    {props.altitude}  Meters<br />Velocity: {props.velocity} kmph</p>
+            </Tooltip>
+        </Marker>
+    )
 }
 
 function Home() {
     const [sliderVal, setSliderVal] = useState(200);
-    const [coordinate, setCoordinate] = useState({ lat: 40, lng: -100 })
-
-    //text underneath slider telling current range
-    const [output, setOutput] = useState(sliderVal + " KM")
+    const [markerCoordinate, setMarkerCoordinate] = useState({ lat: 40, lng: -100 })
+    const [planeData, setPlaneData] = useState([])
+    const [planeList, setPlaneList] = useState([]);
+    const [resetTimer, setResetTimer] = useState(0)
     useEffect(() => {
-        // Create a leaflet map initialized at a point within the United States
-        if (!mymap) {
-            mymap = L.map('mapid', { tap: L.Browser.safari && L.Browser.mobile, renderer: L.canvas() }).setView([30, -80], 4);
+        const fetchData = async (data) => {
+            const planeInfo = await getData(data);
+            setPlaneData(planeInfo);
         }
-        if (!mymap.hasLayer(moveableMarker)) {
-            moveableMarker = L.marker([40, -100], { draggable: true }, { autoPan: true }).addTo(mymap);
-        }
-        if (!mymap.hasLayer(radiusRing)) {
-            radiusRing = L.circle([40, -100], { radius: 250 * 1000 }).addTo(mymap);
-        }
-        moveableMarker.on('movestart', function () {
-            while (mymap.hasLayer(radiusRing)) {
-                mymap.removeLayer(radiusRing);
-            }
-        });
-        moveableMarker.on('moveend', function () {
-            setCoordinate(moveableMarker.getLatLng())
-        });
-        layerGroup.addTo(mymap);
-        tiles.addTo(mymap);
-        layerGroup.addLayer(myGeoJsonLayer);
-        layerdata = { 'lat': coordinate.lat, 'lng': coordinate.lng, 'offset': (sliderVal / 111) };
-        setInterval(() => setCoordinate((prevState) => ({...prevState})), 5000);
+        setInterval(() => fetchData({ lat: markerCoordinate.lat, lng: markerCoordinate.lng, offset: sliderVal / 111 }), 7000);
     }, [])
 
     useEffect(() => {
-        mymap.removeLayer(radiusRing);
-        let rad = radiusRing.getRadius();
-        radiusRing = L.circle([coordinate.lat, coordinate.lng], { radius: rad }).addTo(mymap);
-        layerdata = { 'lat': coordinate.lat, 'lng': coordinate.lng, 'offset': (sliderVal / 111) };
-        updateLayer(layerdata);
-    }, [coordinate])
+        if (resetTimer > 10) {
+            setPlaneList([])
+            setResetTimer(0)
+        }
+        if (planeData) {
+            let planes = planeData.map((data) => {
+                return <Plane position={{ lat: data[6], lng: data[5] }} rotation={data[10]} callsign={data[1]} velocity={data[9]} altitude={data[7]} />
+            })
+            setPlaneList(planes)
+        }
+        console.log(resetTimer)
+        setResetTimer((prev) => prev + 1)
+    }, [planeData])
 
     return (
-        <div className="w-screen h-screen flex flex-col text-center content-center align-middle">
-            <div className="text-xl pt-5 pb-5">
-                Live map of planes around the world
-            </div>
-            <div id="mapid" className="w-1/2 h-1/2 ml-auto mr-auto"></div>
-        </div>
+        <MapContainer center={[30, -80]} zoom={4} className="w-screen h-screen" preferCanvas={true} >
+            <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <DraggableMarker center={markerCoordinate} setMarkerCoordinate={setMarkerCoordinate} />
+            {planeList}
+        </MapContainer>
     )
 }
 
