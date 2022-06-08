@@ -10,6 +10,7 @@ function DraggableMarker(props) {
                 if (marker != null) {
                     setPosition(marker.getLatLng())
                     props.setMarkerCoordinate(marker.getLatLng());
+                    props.setPlaneList([])
                 }
             },
         }),

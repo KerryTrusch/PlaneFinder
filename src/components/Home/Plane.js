@@ -43,7 +43,7 @@ function Plane(props) {
             <RotatedMarker position={props.position} rotationAngle={props.rotation} rotationOrigin={'center'} icon={createIcon('plane2.png')}>
                 <Tooltip>
                     <p style={{ textAlign: 'center' }}> {props.callsign} <br /><br />Altitude:
-                        {props.altitude}  Meters<br />Velocity: {props.velocity} kmph</p>
+                        {props.altitude > 0 ? props.altitude : 0}  Meters<br />Velocity: {props.velocity} kmph</p>
                 </Tooltip>
             </RotatedMarker>
         )

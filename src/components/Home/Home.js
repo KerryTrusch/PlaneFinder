@@ -7,8 +7,8 @@ import Plane from './Plane';
 function Home() {
     const [sliderVal, setSliderVal] = useState(200);
     const [markerCoordinate, setMarkerCoordinate] = useState({ lat: 40, lng: -100 })
-    const [planeData, setPlaneData] = useState([])
     const [planeList, setPlaneList] = useState([]);
+    const [updateVal, setUpdateVal] = useState(0);
     function handleSliderChange(e) {
         setSliderVal(parseInt(e.target.value));
     }
@@ -22,55 +22,48 @@ function Home() {
 
     useEffect(() => {
         function getData() {
-            const tempSlideVal = document.getElementById("rangeSlider").value;
-            getData.sliderVal = parseInt(tempSlideVal);
-            getData.markerCoordinate = markerCoordinate;
             setTimeout(() => {
-                if (document.getElementById("rangeSlider").value === tempSlideVal && getData.sliderVal === sliderVal && getData.markerCoordinate === markerCoordinate) {
-                    let URL = "https://opensky-network.org/api/states/all?lamin=" + (markerCoordinate.lat - sliderVal / 111) + "&lomin=" + (markerCoordinate.lng - sliderVal / 111) + "&lamax=" + (markerCoordinate.lat + sliderVal / 111) + "&lomax=" + (markerCoordinate.lng + sliderVal / 111);
-                    const response = fetch(URL, {
-                        mode: 'cors',
-                        headers: {
-                            'Access-Control-Allow-Origin': '*'
-                        }
-                    });
+                let URL = "https://opensky-network.org/api/states/all?lamin=" + (markerCoordinate.lat - sliderVal / 111) + "&lomin=" + (markerCoordinate.lng - sliderVal / 111) + "&lamax=" + (markerCoordinate.lat + sliderVal / 111) + "&lomax=" + (markerCoordinate.lng + sliderVal / 111);
+                const response = fetch(URL, {
+                    mode: 'cors',
+                    headers: {
+                        'Access-Control-Allow-Origin': '*'
+                    }
+                });
 
-                    let timeOutPromise = new Promise(function (resolve, reject) {
-                        setTimeout(resolve, 4000, 'Timeout Done')
-                    })
+                let timeOutPromise = new Promise(function (resolve, reject) {
+                    setTimeout(resolve, 4000, 'Timeout Done')
+                })
 
-                    Promise.all([response, timeOutPromise]).then(function (values) {
-                        let jsonPromise = new Promise(function (resolve, reject) {
-                            resolve(values[0].json());
-                        })
-                        jsonPromise.then((val) => {
-                            let planeDataList = val.states;
-                            let planes = planeDataList.map((data) => {
-                                let point = { lat: data[6], lng: data[5] }
-                                if (withinCircle(point)) {
-                                    let plane = <Plane position={point} rotation={data[10]} callsign={data[1]} velocity={data[9]} altitude={data[7]} key={data[1]} />
-                                    return plane;
-                                } else {
-                                    return undefined;
-                                }
-                            })
-                            planes = planes.filter((x) => {
-                                return x !== undefined;
-                            })
-                            setPlaneList((prev) => planes)
-                            setPlaneData((prev) => val.states);
-                            getData()
-                        })
+                Promise.all([response, timeOutPromise]).then(function (values) {
+                    let jsonPromise = new Promise(function (resolve, reject) {
+                        resolve(values[0].json());
                     })
-                }
-            }, 5000);
+                    jsonPromise.then((val) => {
+                        let planeDataList = val.states;
+                        let planes = planeDataList.map((data) => {
+                            let point = { lat: data[6], lng: data[5] }
+                            if (withinCircle(point) && data[1]) {
+                                let plane = <Plane position={point} rotation={data[10]} callsign={data[1]} velocity={data[9]} altitude={data[7]} key={data[1] + " " + point.lat} />
+                                return plane;
+                            } else {
+                                return undefined;
+                            }
+                        })
+                        planes = planes.filter((x) => {
+                            return x !== undefined;
+                        })
+                        console.log(planes);
+                        setPlaneList((prev) => planes)
+                    })
+                })
+            }, 1000);
         }
         getData()
-    }, [sliderVal, markerCoordinate])
+    })
 
     useEffect(() => {
-        console.log(planeData)
-    }, [planeData])
+    }, [])
 
     return (
         <div>
@@ -88,7 +81,7 @@ function Home() {
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <DraggableMarker center={markerCoordinate} setMarkerCoordinate={setMarkerCoordinate} />
+                <DraggableMarker center={markerCoordinate} setMarkerCoordinate={setMarkerCoordinate} setPlaneList={setPlaneList} />
                 <Circle center={markerCoordinate} radius={sliderVal * 1000} />
                 {planeList}
             </MapContainer>
