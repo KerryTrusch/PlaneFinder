@@ -53,23 +53,21 @@ function Home() {
     }, [sliderVal, markerCoordinate])
 
     useEffect(() => {
-        setTimeout(async function () {
-            if (planeData) {
-                let planes = planeData.map((data) => {
-                    let point = { lat: data[6], lng: data[5] }
-                    if (withinCircle(point)) {
-                        let plane = <Plane position={point} rotation={data[10]} callsign={data[1]} velocity={data[9]} altitude={data[7]} />
-                        return plane;
-                    } else {
-                        return undefined;
-                    }
-                })
-                planes = planes.filter((x) => {
-                    return x !== undefined;
-                })
-                await setPlaneList(planes)
-            }
-        })
+        if (planeData) {
+            let planes = planeData.map((data) => {
+                let point = { lat: data[6], lng: data[5] }
+                if (withinCircle(point)) {
+                    let plane = <Plane position={point} rotation={data[10]} callsign={data[1]} velocity={data[9]} altitude={data[7]} />
+                    return plane;
+                } else {
+                    return undefined;
+                }
+            })
+            planes = planes.filter((x) => {
+                return x !== undefined;
+            })
+            setPlaneList(planes)
+        }
     }, [planeData])
 
     return (
