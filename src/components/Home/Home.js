@@ -23,8 +23,10 @@ function Home() {
     useEffect(() => {
         function getData() {
             const tempSlideVal = document.getElementById("rangeSlider").value;
+            getData.sliderVal = parseInt(tempSlideVal);
+            getData.markerCoordinate = markerCoordinate;
             setTimeout(() => {
-                if (document.getElementById("rangeSlider").value === tempSlideVal) {
+                if (document.getElementById("rangeSlider").value === tempSlideVal && getData.sliderVal === sliderVal && getData.markerCoordinate === markerCoordinate) {
                     let URL = "https://opensky-network.org/api/states/all?lamin=" + (markerCoordinate.lat - sliderVal / 111) + "&lomin=" + (markerCoordinate.lng - sliderVal / 111) + "&lamax=" + (markerCoordinate.lat + sliderVal / 111) + "&lomax=" + (markerCoordinate.lng + sliderVal / 111);
                     const response = fetch(URL, {
                         mode: 'cors',
@@ -42,7 +44,21 @@ function Home() {
                             resolve(values[0].json());
                         })
                         jsonPromise.then((val) => {
-                            setPlaneData(val.states);
+                            let planeDataList = val.states;
+                            let planes = planeDataList.map((data) => {
+                                let point = { lat: data[6], lng: data[5] }
+                                if (withinCircle(point)) {
+                                    let plane = <Plane position={point} rotation={data[10]} callsign={data[1]} velocity={data[9]} altitude={data[7]} key={data[1]} />
+                                    return plane;
+                                } else {
+                                    return undefined;
+                                }
+                            })
+                            planes = planes.filter((x) => {
+                                return x !== undefined;
+                            })
+                            setPlaneList((prev) => planes)
+                            setPlaneData((prev) => val.states);
                             getData()
                         })
                     })
@@ -53,21 +69,7 @@ function Home() {
     }, [sliderVal, markerCoordinate])
 
     useEffect(() => {
-        if (planeData) {
-            let planes = planeData.map((data) => {
-                let point = { lat: data[6], lng: data[5] }
-                if (withinCircle(point)) {
-                    let plane = <Plane position={point} rotation={data[10]} callsign={data[1]} velocity={data[9]} altitude={data[7]} />
-                    return plane;
-                } else {
-                    return undefined;
-                }
-            })
-            planes = planes.filter((x) => {
-                return x !== undefined;
-            })
-            setPlaneList(planes)
-        }
+        console.log(planeData)
     }, [planeData])
 
     return (
