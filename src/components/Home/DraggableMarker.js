@@ -1,7 +1,7 @@
 import {useState, useRef, useMemo} from 'react';
 import {Marker} from 'react-leaflet';
-function DraggableMarker(props) {
-    const [position, setPosition] = useState(props.center)
+function DraggableMarker({center, setMarkerCoordinate, setPlaneList}) {
+    const [position, setPosition] = useState(center)
     const markerRef = useRef(null)
     const eventHandlers = useMemo(
         () => ({
@@ -9,12 +9,12 @@ function DraggableMarker(props) {
                 const marker = markerRef.current
                 if (marker != null) {
                     setPosition(marker.getLatLng())
-                    props.setMarkerCoordinate(marker.getLatLng());
-                    props.setPlaneList([])
+                    setMarkerCoordinate(marker.getLatLng());
+                    setPlaneList([])
                 }
             },
         }),
-        [],
+        [setMarkerCoordinate, setPlaneList],
     )
 
     return (

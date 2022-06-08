@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 function Header() {
     return (
-    <div className="">
+    <div className="max-h-12">
         <ul className="list-none overflow-hidden m-0 p-0 block bg-sky-900">
             {[['Home', '/'], ['About', '/about']]
             .map(([title, url]) => (

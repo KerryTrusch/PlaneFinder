@@ -8,7 +8,6 @@ function Home() {
     const [sliderVal, setSliderVal] = useState(200);
     const [markerCoordinate, setMarkerCoordinate] = useState({ lat: 40, lng: -100 })
     const [planeList, setPlaneList] = useState([]);
-    const [updateVal, setUpdateVal] = useState(0);
     function handleSliderChange(e) {
         setSliderVal(parseInt(e.target.value));
     }
@@ -66,7 +65,7 @@ function Home() {
     }, [])
 
     return (
-        <div>
+        <div className="h-[calc(100vh_-_48px)] w-full">
             <div className="absolute top-20 right-0 flex flex-col bg-black height-1/2 z-[10000] px-6 pt-1 rounded">
                 <div className="text-center text-white mb-4">
                     Set search radius
@@ -76,7 +75,7 @@ function Home() {
                     {sliderVal} KM
                 </div>
             </div>
-            <MapContainer center={[30, -80]} zoom={4} className="w-screen h-screen" preferCanvas={true} >
+            <MapContainer center={[30, -80]} zoom={4} className="w-screen h-full" preferCanvas={true} >
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
