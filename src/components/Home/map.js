@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 export default function Map() {
     const mapContainer = useRef(null);
     const map = useRef(null);
-    const [lonlat, setLonlat] = useState([ -100, 40 ])
-    const [currentLayer, setCurrentLayer] = useState(null);
+    const [lonlat, setLonlat] = useState([-100, 40])
     const [sliderVal, setSliderVal] = useState(200);
+
     function withinCircle(point) {
         let x = (point[1] - lonlat[1]) * (point[1] - lonlat[1])
         let y = (point[0] - lonlat[0]) * (point[0] - lonlat[0])
@@ -15,45 +15,40 @@ export default function Map() {
     }
 
     useEffect(() => {
-        if (map.current) return;
-        map.current = new maptalks.Map('map', {
-            center: lonlat,
-            zoom: 4,
-            baseLayer: new maptalks.TileLayer('base', {
-                urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                subdomains: ["a","b","c","d"],
-                attribution: '&copy; <a href="http://osm.org">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/">CARTO</a>'
-              })
-        });
-        var DraggableMarker = new maptalks.Marker(
-            lonlat,
-            {
-              visible : true,
-              cursor : 'pointer',
-              shadowBlur : 0,
-              shadowColor : 'black',
-              draggable : true,
-              dragShadow : false, // display a shadow during dragging
-              drawOnAxis : null  // force dragging stick on a axis, can be: x, y
-            }
-          ).addTo(map.current)
-            .on()
-        // this is how to make a point with an altitude
-        // var point = new maptalks.Marker( 
-        //     lonlat,
-        //     {
-        //       properties : {
-        //         altitude : 15000
-        //       }
-        //     }
-        //   );
-
-        let newLayer = new maptalks.VectorLayer('vector', [], {
-            enableAltitude : true,        // enable altitude
-            altitudeProperty : 'altitude' // altitude property in properties, default by 'altitude'
-          }).addTo(map.current);
-        setCurrentLayer(newLayer);
-    })
+        if (!map.current) {
+            map.current = new maptalks.Map('map', {
+                center: lonlat,
+                zoom: 4,
+                baseLayer: new maptalks.TileLayer('base', {
+                    urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                    subdomains: ["a", "b", "c", "d"],
+                    attribution: '&copy; <a href="http://osm.org">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/">CARTO</a>'
+                })
+            });
+            let markerLayer = new maptalks.VectorLayer('dragmarker').addTo(map.current);
+            var DraggableMarker = new maptalks.Marker(
+                lonlat,
+                {
+                    visible: true,
+                    cursor: 'pointer',
+                    shadowBlur: 0,
+                    shadowColor: 'black',
+                    draggable: true,
+                    dragShadow: false, // display a shadow during dragging
+                    drawOnAxis: null  // force dragging stick on a axis, can be: x, y
+                }
+            ).addTo(markerLayer);
+            // this is how to make a point with an altitude
+            // var point = new maptalks.Marker( 
+            //     lonlat,
+            //     {
+            //       properties : {
+            //         altitude : 15000
+            //       }
+            //     }
+            //   );
+        }
+    }, [])
 
     useEffect(() => {
         function getData() {
@@ -77,12 +72,18 @@ export default function Map() {
                     jsonPromise.then((val) => {
                         let planeDataList = val.states;
                         let planes = planeDataList.map((data) => {
-                            let point = [ data[5], data[6] ]
+                            let point = [data[5], data[6]]
                             if (withinCircle(point) && data[1]) {
                                 // let plane = <Plane position={point} rotation={data[10]} callsign={data[1]} velocity={data[9]} altitude={data[7]} key={data[1] + " " + point.lat} />
-                                let plane = new maptalks.Marker(lonlat, {
+                                let plane = new maptalks.Marker(point, {
                                     properties: {
-                                        altitude: parseInt(data[7])
+                                        altitude: (data[7] ? data[7] : 0) * 2
+                                    },
+                                    'symbol': {
+                                        'markerFile': 'plane.png',
+                                        'markerWidth': 29,
+                                        'markerHeight': 29,
+                                        'markerRotation': data[10]
                                     }
                                 })
                                 return plane;
@@ -93,14 +94,19 @@ export default function Map() {
 
                         planes = planes.filter((x) => {
                             return x !== undefined;
-                        })
-                        if (currentLayer) {
-                            currentLayer.clear();
-                        } else return;
+                        });
+                        if (map.current.getLayer('vector')) {
+                            map.current.removeLayer(map.current.getLayer('vector'));
+                        }
+                        let newLayer = new maptalks.VectorLayer('vector', planes, {
+                            enableAltitude: true,        // enable altitude
+                            altitudeProperty: 'altitude' // altitude property in properties, default by 'altitude'
+                        }).addTo(map.current);
                     })
                 })
             }, 1000);
         }
+        console.log('here')
         getData()
     })
 

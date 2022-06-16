@@ -52,7 +52,6 @@ function Home() {
                         planes = planes.filter((x) => {
                             return x !== undefined;
                         })
-                        console.log(planes);
                         setPlaneList((prev) => planes)
                     })
                 })
