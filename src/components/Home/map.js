@@ -14,6 +14,48 @@ export default function Map() {
         return ((x + y) <= radius)
     }
 
+    const getData = async () =>  {
+            let URL = "https://opensky-network.org/api/states/all?lamin=" + (lonlat[1] - sliderVal / 111) + "&lomin=" + (lonlat[0] - sliderVal / 111) + "&lamax=" + (lonlat[1] + sliderVal / 111) + "&lomax=" + (lonlat[0] + sliderVal / 111);
+            const response =  await fetch(URL, {
+                mode: 'cors',
+                headers: {
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
+                    let planeDataList = val.states;
+                    let planes = planeDataList.map((data) => {
+                        let point = [data[5], data[6]]
+                        if (withinCircle(point) && data[1]) {
+                            // let plane = <Plane position={point} rotation={data[10]} callsign={data[1]} velocity={data[9]} altitude={data[7]} key={data[1] + " " + point.lat} />
+                            let plane = new maptalks.Marker(point, {
+                                properties: {
+                                    altitude: (data[7] ? data[7] : 0) * 2
+                                },
+                                'symbol': {
+                                    'markerFile': 'plane.png',
+                                    'markerWidth': 29,
+                                    'markerHeight': 29,
+                                    'markerRotation': data[10]
+                                }
+                            })
+                            return plane;
+                        } else {
+                            return undefined;
+                        }
+                    })
+
+                    planes = planes.filter((x) => {
+                        return x !== undefined;
+                    });
+                    if (map.current.getLayer('vector')) {
+                        map.current.removeLayer(map.current.getLayer('vector'));
+                    }
+                    let newLayer = new maptalks.VectorLayer('vector', planes, {
+                        enableAltitude: true,        // enable altitude
+                        altitudeProperty: 'altitude' // altitude property in properties, default by 'altitude'
+                    }).addTo(map.current);
+    }
+
     useEffect(() => {
         if (!map.current) {
             map.current = new maptalks.Map('map', {
@@ -48,67 +90,8 @@ export default function Map() {
             //     }
             //   );
         }
-    }, [])
-
-    useEffect(() => {
-        function getData() {
-            setTimeout(() => {
-                let URL = "https://opensky-network.org/api/states/all?lamin=" + (lonlat[1] - sliderVal / 111) + "&lomin=" + (lonlat[0] - sliderVal / 111) + "&lamax=" + (lonlat[1] + sliderVal / 111) + "&lomax=" + (lonlat[0] + sliderVal / 111);
-                const response = fetch(URL, {
-                    mode: 'cors',
-                    headers: {
-                        'Access-Control-Allow-Origin': '*'
-                    }
-                });
-
-                let timeOutPromise = new Promise(function (resolve, reject) {
-                    setTimeout(resolve, 4000, 'Timeout Done')
-                })
-
-                Promise.all([response, timeOutPromise]).then(function (values) {
-                    let jsonPromise = new Promise(function (resolve, reject) {
-                        resolve(values[0].json());
-                    })
-                    jsonPromise.then((val) => {
-                        let planeDataList = val.states;
-                        let planes = planeDataList.map((data) => {
-                            let point = [data[5], data[6]]
-                            if (withinCircle(point) && data[1]) {
-                                // let plane = <Plane position={point} rotation={data[10]} callsign={data[1]} velocity={data[9]} altitude={data[7]} key={data[1] + " " + point.lat} />
-                                let plane = new maptalks.Marker(point, {
-                                    properties: {
-                                        altitude: (data[7] ? data[7] : 0) * 2
-                                    },
-                                    'symbol': {
-                                        'markerFile': 'plane.png',
-                                        'markerWidth': 29,
-                                        'markerHeight': 29,
-                                        'markerRotation': data[10]
-                                    }
-                                })
-                                return plane;
-                            } else {
-                                return undefined;
-                            }
-                        })
-
-                        planes = planes.filter((x) => {
-                            return x !== undefined;
-                        });
-                        if (map.current.getLayer('vector')) {
-                            map.current.removeLayer(map.current.getLayer('vector'));
-                        }
-                        let newLayer = new maptalks.VectorLayer('vector', planes, {
-                            enableAltitude: true,        // enable altitude
-                            altitudeProperty: 'altitude' // altitude property in properties, default by 'altitude'
-                        }).addTo(map.current);
-                    })
-                })
-            }, 1000);
-        }
-        console.log('here')
         getData()
-    })
+    }, [])
 
 
     return (

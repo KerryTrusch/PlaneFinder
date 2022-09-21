@@ -64,7 +64,7 @@ function Home() {
             }, 1000);
         }
         getData()
-    })
+    }, [])
 
     useEffect(() => {
         function getData() {
