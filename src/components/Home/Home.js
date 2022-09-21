@@ -21,15 +21,21 @@ function Home() {
 
     useEffect(() => {
         function getData() {
+            const tempSlideVal = document.getElementById("rangeSlider").value;
+            getData.sliderVal = parseInt(tempSlideVal);
+            //TODO: getting this value is also async, have to pull it directly from the DraggableMarker the moment it is dropped.
+            getData.markerCoordinate = markerCoordinate;
             setTimeout(() => {
-                let URL = "https://opensky-network.org/api/states/all?lamin=" + (markerCoordinate.lat - sliderVal / 111) + "&lomin=" + (markerCoordinate.lng - sliderVal / 111) + "&lamax=" + (markerCoordinate.lat + sliderVal / 111) + "&lomax=" + (markerCoordinate.lng + sliderVal / 111);
-                const response = fetch(URL, {
-                    mode: 'cors',
-                    headers: {
-                        'Access-Control-Allow-Origin': '*'
-                    }
-                });
-
+                console.log(getData.markerCoordinate + " " + markerCoordinate);
+                if (document.getElementById("rangeSlider").value === tempSlideVal && getData.sliderVal === sliderVal && getData.markerCoordinate === markerCoordinate) {
+                    let URL = "https://opensky-network.org/api/states/all?lamin=" + (markerCoordinate.lat - sliderVal / 111) + "&lomin=" + (markerCoordinate.lng - sliderVal / 111) + "&lamax=" + (markerCoordinate.lat + sliderVal / 111) + "&lomax=" + (markerCoordinate.lng + sliderVal / 111);
+                    const response = fetch(URL, {
+                        mode: 'cors',
+                        headers: {
+                            'Access-Control-Allow-Origin': '*'
+                        }
+                    });
+                }
                 let timeOutPromise = new Promise(function (resolve, reject) {
                     setTimeout(resolve, 4000, 'Timeout Done')
                 })
@@ -61,6 +67,15 @@ function Home() {
     })
 
     useEffect(() => {
+        function getData() {
+            const tempSlideVal = document.getElementById("rangeSlider").value;
+            getData.sliderVal = parseInt(tempSlideVal);
+            //TODO: getting this value is also async, have to pull it directly from the DraggableMarker the moment it is dropped.
+            getData.markerCoordinate = markerCoordinate;
+            setTimeout(() => {
+
+            })
+        }
     }, [])
 
     return (
