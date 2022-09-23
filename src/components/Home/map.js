@@ -22,38 +22,38 @@ export default function Map() {
                     'Access-Control-Allow-Origin': '*'
                 }
             });
-                    let planeDataList = val.states;
-                    let planes = planeDataList.map((data) => {
-                        let point = [data[5], data[6]]
-                        if (withinCircle(point) && data[1]) {
-                            // let plane = <Plane position={point} rotation={data[10]} callsign={data[1]} velocity={data[9]} altitude={data[7]} key={data[1] + " " + point.lat} />
-                            let plane = new maptalks.Marker(point, {
-                                properties: {
-                                    altitude: (data[7] ? data[7] : 0) * 2
-                                },
-                                'symbol': {
-                                    'markerFile': 'plane.png',
-                                    'markerWidth': 29,
-                                    'markerHeight': 29,
-                                    'markerRotation': data[10]
-                                }
-                            })
-                            return plane;
-                        } else {
-                            return undefined;
+            let planeDataList = response.states;
+            let planes = planeDataList.map((data) => {
+                let point = [data[5], data[6]]
+                if (withinCircle(point) && data[1]) {
+                    // let plane = <Plane position={point} rotation={data[10]} callsign={data[1]} velocity={data[9]} altitude={data[7]} key={data[1] + " " + point.lat} />
+                    let plane = new maptalks.Marker(point, {
+                        properties: {
+                            altitude: (data[7] ? data[7] : 0) * 2
+                        },
+                        'symbol': {
+                            'markerFile': 'plane.png',
+                            'markerWidth': 29,
+                            'markerHeight': 29,
+                            'markerRotation': data[10]
                         }
                     })
+                    return plane;
+                } else {
+                    return undefined;
+                }
+            })
 
-                    planes = planes.filter((x) => {
-                        return x !== undefined;
-                    });
-                    if (map.current.getLayer('vector')) {
-                        map.current.removeLayer(map.current.getLayer('vector'));
-                    }
-                    let newLayer = new maptalks.VectorLayer('vector', planes, {
-                        enableAltitude: true,        // enable altitude
-                        altitudeProperty: 'altitude' // altitude property in properties, default by 'altitude'
-                    }).addTo(map.current);
+            planes = planes.filter((x) => {
+                return x !== undefined;
+            });
+            if (map.current.getLayer('vector')) {
+                map.current.removeLayer(map.current.getLayer('vector'));
+            }
+            let newLayer = new maptalks.VectorLayer('vector', planes, {
+                enableAltitude: true,        // enable altitude
+                altitudeProperty: 'altitude' // altitude property in properties, default by 'altitude'
+            }).addTo(map.current);
     }
 
     useEffect(() => {
@@ -90,7 +90,13 @@ export default function Map() {
             //     }
             //   );
         }
-        getData()
+        const id = setInterval(() => {
+            getData(); // <-- (3) invoke in interval callback
+          }, 10000);
+
+        getData();
+
+        return () => clearInterval(id);
     }, [])
 
 
