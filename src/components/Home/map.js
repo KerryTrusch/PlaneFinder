@@ -22,7 +22,8 @@ export default function Map() {
                     'Access-Control-Allow-Origin': '*'
                 }
             });
-            let planeDataList = response.states;
+            let planeDataList = await response.json();
+            planeDataList = planeDataList.states;
             let planes = planeDataList.map((data) => {
                 let point = [data[5], data[6]]
                 if (withinCircle(point) && data[1]) {
